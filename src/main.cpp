@@ -30,6 +30,16 @@ enum PartSel {
 static PartSel  g_part  = SEL_TORSO;
 static Model   *g_model = nullptr;
 
+static int g_fbW = WIN_W;
+static int g_fbH = WIN_H;
+static bool g_resized = false;
+
+static void framebufferSizeCallback(GLFWwindow * /*window*/, int w, int h) {
+    g_fbW     = w;
+    g_fbH     = h;
+    g_resized = true;
+}
+
 static const char *partName(PartSel p) {
     switch (p) {
         case SEL_HEAD:      return "Head";
@@ -147,6 +157,7 @@ int main() {
 
     glfwMakeContextCurrent(window);
     glfwSetKeyCallback(window, keyCallback);
+    glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
     glfwSwapInterval(1);
 
     const GLubyte *glVer = glGetString(GL_VERSION);
@@ -161,12 +172,14 @@ int main() {
         return 1;
     }
 
+    glfwGetFramebufferSize(window, &g_fbW, &g_fbH);
+
     glEnable(GL_DEPTH_TEST);
-    glViewport(0, 0, WIN_W, WIN_H);
+    glViewport(0, 0, g_fbW, g_fbH);
 
     Shader       shader("shaders/vertex.glsl", "shaders/fragment.glsl");
     TextRenderer text;
-    text.init(WIN_W, WIN_H);
+    text.init(g_fbW, g_fbH);
     Model     model;
     Animation anim;
 
@@ -181,7 +194,7 @@ int main() {
     mat4 view       = lookAt(camPos, camTarget, camUp);
     mat4 projection = perspective(
         0.785398f,
-        static_cast<float>(WIN_W) / WIN_H,
+        static_cast<float>(g_fbW) / static_cast<float>(g_fbH),
         0.1f,
         100.f
     );
@@ -192,6 +205,19 @@ int main() {
         double now = glfwGetTime();
         float  dt  = static_cast<float>(now - lastTime);
         lastTime   = now;
+
+        if (g_resized) {
+            glViewport(0, 0, g_fbW, g_fbH);
+            projection = perspective(
+                0.785398f,
+                static_cast<float>(g_fbW) / static_cast<float>(g_fbH),
+                0.1f,
+                100.f
+            );
+            text.cleanup();
+            text.init(g_fbW, g_fbH);
+            g_resized = false;
+        }
 
         if (g_animChanged) {
             anim.setType(g_animType);
@@ -217,14 +243,12 @@ int main() {
 
         model.draw(shader, pose);
 
-        // --- 2D HUD legend ---
         glDisable(GL_DEPTH_TEST);
         const float X  = 10.f;
         float       Y  = 10.f;
         const float dy = 18.f;
-        const float KR = 1.0f, KG = 0.85f, KB = 0.2f; // key colour (yellow)
-        const float TR = 0.9f, TG = 0.9f, TB = 0.9f;  // text colour (white)
-        // animations
+        const float KR = 1.0f, KG = 0.85f, KB = 0.2f;
+        const float TR = 0.9f, TG = 0.9f, TB = 0.9f;
         text.drawString("ANIMATIONS",            X, Y, TR, TG, TB); Y += dy;
         text.drawString("W", X, Y, KR, KG, KB);
         text.drawString(" - Walk",         X+16, Y, TR, TG, TB); Y += dy;
@@ -232,7 +256,6 @@ int main() {
         text.drawString(" - Idle",         X+16, Y, TR, TG, TB); Y += dy;
         text.drawString("J", X, Y, KR, KG, KB);
         text.drawString(" - Jump",         X+16, Y, TR, TG, TB); Y += dy;
-        // body parts
         Y += 4.f;
         text.drawString("BODY PARTS",           X, Y, TR, TG, TB); Y += dy;
         text.drawString("1", X, Y, KR, KG, KB);
@@ -247,14 +270,12 @@ int main() {
         text.drawString(" - Thigh",        X+16, Y, TR, TG, TB); Y += dy;
         text.drawString("6", X, Y, KR, KG, KB);
         text.drawString(" - Lower Leg",    X+16, Y, TR, TG, TB); Y += dy;
-        // resize
         Y += 4.f;
         text.drawString("RESIZE PART",          X, Y, TR, TG, TB); Y += dy;
         text.drawString("+", X, Y, KR, KG, KB);
         text.drawString(" - Enlarge",      X+16, Y, TR, TG, TB); Y += dy;
         text.drawString("-", X, Y, KR, KG, KB);
         text.drawString(" - Shrink",       X+16, Y, TR, TG, TB); Y += dy;
-        // quit
         Y += 4.f;
         text.drawString("ESC", X, Y, KR, KG, KB);
         text.drawString(" - Quit",         X+48, Y, TR, TG, TB);

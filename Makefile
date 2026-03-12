@@ -6,7 +6,9 @@ CXXFLAGS = -Wall -Wextra -Werror -std=c++17
 SRCS    = src/main.cpp \
           src/Model.cpp \
           src/Animation.cpp \
-          src/Shader.cpp
+          src/Shader.cpp \
+          src/Math.cpp \
+          src/TextRenderer.cpp
 
 OBJDIR  = obj
 OBJS    = $(patsubst src/%.cpp,$(OBJDIR)/%.o,$(SRCS))
