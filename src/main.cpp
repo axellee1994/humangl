@@ -8,6 +8,7 @@
 #include "Math.hpp"
 #include "Model.hpp"
 #include "Shader.hpp"
+#include "TextRenderer.hpp"
 
 static constexpr int WIN_W = 800;
 static constexpr int WIN_H = 600;
@@ -15,8 +16,6 @@ static constexpr int WIN_H = 600;
 static AnimType g_animType    = AnimType::IDLE;
 static bool     g_animChanged = false;
 static bool     g_titleDirty  = false;
-
-// ── Runtime limb selection & resize ──────────────────────────────────────────
 
 enum PartSel {
     SEL_HEAD = 0,
@@ -80,17 +79,13 @@ static void resizePart(float factor) {
     g_titleDirty = true;
 }
 
-// ── Key callback ──────────────────────────────────────────────────────────────
-
 static void keyCallback(GLFWwindow *window, int key, int /*scancode*/, int action, int /*mods*/) {
     if (action != GLFW_PRESS)
         return;
     switch (key) {
-        // Quit
         case GLFW_KEY_ESCAPE:
             glfwSetWindowShouldClose(window, GLFW_TRUE);
             break;
-        // Animation
         case GLFW_KEY_W:
             g_animType    = AnimType::WALK;
             g_animChanged = true;
@@ -103,22 +98,19 @@ static void keyCallback(GLFWwindow *window, int key, int /*scancode*/, int actio
             g_animType    = AnimType::IDLE;
             g_animChanged = true;
             break;
-        // Body-part selection (1-6)
-        case GLFW_KEY_1: g_part = SEL_HEAD;      g_titleDirty = true; break;
+        case GLFW_KEY_1:
+            g_part = SEL_HEAD;      g_titleDirty = true; break;
         case GLFW_KEY_2: g_part = SEL_TORSO;     g_titleDirty = true; break;
         case GLFW_KEY_3: g_part = SEL_UPPER_ARM; g_titleDirty = true; break;
         case GLFW_KEY_4: g_part = SEL_FOREARM;   g_titleDirty = true; break;
         case GLFW_KEY_5: g_part = SEL_THIGH;     g_titleDirty = true; break;
         case GLFW_KEY_6: g_part = SEL_LOWER_LEG; g_titleDirty = true; break;
-        // Resize selected part (+/-)
-        case GLFW_KEY_EQUAL: resizePart(1.1f);         break; // + / =
-        case GLFW_KEY_MINUS: resizePart(1.f / 1.1f);   break; // -
+        case GLFW_KEY_EQUAL: resizePart(1.1f);         break;
+        case GLFW_KEY_MINUS: resizePart(1.f / 1.1f);   break;
         default:
             break;
     }
 }
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 static const char *animName(AnimType t) {
     switch (t) {
@@ -135,8 +127,6 @@ static void updateTitle(GLFWwindow *window, AnimType anim) {
                       + " (1-6 select, +/- resize)";
     glfwSetWindowTitle(window, title.c_str());
 }
-
-// ── Main ──────────────────────────────────────────────────────────────────────
 
 int main() {
     if (!glfwInit()) {
@@ -174,7 +164,9 @@ int main() {
     glEnable(GL_DEPTH_TEST);
     glViewport(0, 0, WIN_W, WIN_H);
 
-    Shader    shader("shaders/vertex.glsl", "shaders/fragment.glsl");
+    Shader       shader("shaders/vertex.glsl", "shaders/fragment.glsl");
+    TextRenderer text;
+    text.init(WIN_W, WIN_H);
     Model     model;
     Animation anim;
 
@@ -225,11 +217,55 @@ int main() {
 
         model.draw(shader, pose);
 
+        // --- 2D HUD legend ---
+        glDisable(GL_DEPTH_TEST);
+        const float X  = 10.f;
+        float       Y  = 10.f;
+        const float dy = 18.f;
+        const float KR = 1.0f, KG = 0.85f, KB = 0.2f; // key colour (yellow)
+        const float TR = 0.9f, TG = 0.9f, TB = 0.9f;  // text colour (white)
+        // animations
+        text.drawString("ANIMATIONS",            X, Y, TR, TG, TB); Y += dy;
+        text.drawString("W", X, Y, KR, KG, KB);
+        text.drawString(" - Walk",         X+16, Y, TR, TG, TB); Y += dy;
+        text.drawString("I", X, Y, KR, KG, KB);
+        text.drawString(" - Idle",         X+16, Y, TR, TG, TB); Y += dy;
+        text.drawString("J", X, Y, KR, KG, KB);
+        text.drawString(" - Jump",         X+16, Y, TR, TG, TB); Y += dy;
+        // body parts
+        Y += 4.f;
+        text.drawString("BODY PARTS",           X, Y, TR, TG, TB); Y += dy;
+        text.drawString("1", X, Y, KR, KG, KB);
+        text.drawString(" - Head",         X+16, Y, TR, TG, TB); Y += dy;
+        text.drawString("2", X, Y, KR, KG, KB);
+        text.drawString(" - Torso",        X+16, Y, TR, TG, TB); Y += dy;
+        text.drawString("3", X, Y, KR, KG, KB);
+        text.drawString(" - Upper Arm",    X+16, Y, TR, TG, TB); Y += dy;
+        text.drawString("4", X, Y, KR, KG, KB);
+        text.drawString(" - Forearm",      X+16, Y, TR, TG, TB); Y += dy;
+        text.drawString("5", X, Y, KR, KG, KB);
+        text.drawString(" - Thigh",        X+16, Y, TR, TG, TB); Y += dy;
+        text.drawString("6", X, Y, KR, KG, KB);
+        text.drawString(" - Lower Leg",    X+16, Y, TR, TG, TB); Y += dy;
+        // resize
+        Y += 4.f;
+        text.drawString("RESIZE PART",          X, Y, TR, TG, TB); Y += dy;
+        text.drawString("+", X, Y, KR, KG, KB);
+        text.drawString(" - Enlarge",      X+16, Y, TR, TG, TB); Y += dy;
+        text.drawString("-", X, Y, KR, KG, KB);
+        text.drawString(" - Shrink",       X+16, Y, TR, TG, TB); Y += dy;
+        // quit
+        Y += 4.f;
+        text.drawString("ESC", X, Y, KR, KG, KB);
+        text.drawString(" - Quit",         X+48, Y, TR, TG, TB);
+        glEnable(GL_DEPTH_TEST);
+
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
     g_model = nullptr;
+    text.cleanup();
     glfwDestroyWindow(window);
     glfwTerminate();
     return 0;
