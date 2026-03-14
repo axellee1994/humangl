@@ -34,7 +34,7 @@ void TextRenderer::drawString(const std::string &text, float px, float py,
     float cx = px;
     for (char c : text) {
         if (c == '\n') { cx = px; py += ch; continue; }
-        int idx = static_cast<unsigned char>(c) - 32;
+        int idx = static_cast<unsigned char>(c) - 34;
         if (idx < 0 || idx >= 96) idx = 0;
 
         float u0 = static_cast<float>(idx)     / 96.f;
