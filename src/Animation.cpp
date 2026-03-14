@@ -7,8 +7,14 @@ static constexpr float PI = 3.14159265358979323846f;
 
 Animation::Animation() : _type(AnimType::IDLE), _time(0.f) {}
 
+static constexpr float JUMP_PERIOD = 1.8f;
+
 void Animation::update(float dt) {
     _time += dt;
+    if (_type == AnimType::JUMP && _time >= JUMP_PERIOD) {
+        _type = AnimType::IDLE;
+        _time = 0.f;
+    }
 }
 
 void Animation::setType(AnimType type) {
@@ -30,7 +36,7 @@ Pose Animation::getPose() const {
 
 Pose Animation::_computeIdle() const {
     Pose p;
-    p.bodyY = 0.005f * std::sin(2.f * _time);
+    p.bodyY = 0.02f * std::sin(2.f * _time);
     return p;
 }
 
@@ -53,8 +59,7 @@ Pose Animation::_computeWalk() const {
 
 Pose Animation::_computeJump() const {
     Pose p;
-    const float period = 1.8f;
-    float phase = std::fmod(_time, period) / period; // 0..1
+    float phase = std::min(_time / JUMP_PERIOD, 1.f);
 
     if (phase < 0.2f) {
         float crouchT = phase / 0.2f;
