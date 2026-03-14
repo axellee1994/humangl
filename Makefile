@@ -20,7 +20,13 @@ all: $(NAME)
 $(NAME): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(OBJS) -o $(NAME) $(LIBS)
 
-$(OBJDIR)/%.o: src/%.cpp | $(OBJDIR)
+HDRS    = include/Shader.hpp \
+          include/Model.hpp \
+          include/Animation.hpp \
+          include/Math.hpp \
+          include/TextRenderer.hpp
+
+$(OBJDIR)/%.o: src/%.cpp $(HDRS) | $(OBJDIR)
 	$(CXX) $(CXXFLAGS) -Iinclude -c $< -o $@
 
 $(OBJDIR):

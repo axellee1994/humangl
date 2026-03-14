@@ -1,4 +1,7 @@
 #include "TextRenderer.hpp"
+#include <fstream>
+#include <sstream>
+#include <stdexcept>
 
 void TextRenderer::init(int screenW, int screenH) {
     m_sw = screenW;
@@ -68,6 +71,15 @@ void TextRenderer::cleanup() {
     glDeleteProgram(m_prog);
 }
 
+static std::string readFile(const std::string &path) {
+    std::ifstream file(path);
+    if (!file.is_open())
+        throw std::runtime_error("TextRenderer: cannot open " + path);
+    std::ostringstream ss;
+    ss << file.rdbuf();
+    return ss.str();
+}
+
 GLuint TextRenderer::compileShader(GLenum type, const char *src) {
     GLuint s = glCreateShader(type);
     glShaderSource(s, 1, &src, nullptr);
@@ -76,35 +88,11 @@ GLuint TextRenderer::compileShader(GLenum type, const char *src) {
 }
 
 void TextRenderer::buildShader() {
-    const char *vert = R"glsl(
-#version 400 core
-layout(location = 0) in vec2 aPos;
-layout(location = 1) in vec2 aTexCoord;
-uniform vec2 screenSize;
-out vec2 texCoord;
-void main() {
-    vec2 ndc = (aPos / screenSize) * 2.0 - 1.0;
-    ndc.y = -ndc.y;
-    gl_Position = vec4(ndc, 0.0, 1.0);
-    texCoord = aTexCoord;
-}
-)glsl";
+    std::string vertSrc = readFile("shaders/hud.vert");
+    std::string fragSrc = readFile("shaders/hud.frag");
 
-    const char *frag = R"glsl(
-#version 400 core
-in vec2 texCoord;
-uniform sampler2D fontTex;
-uniform vec3 textColor;
-out vec4 fragColor;
-void main() {
-    float a = texture(fontTex, texCoord).r;
-    if (a < 0.5) discard;
-    fragColor = vec4(textColor, 1.0);
-}
-)glsl";
-
-    GLuint vs = compileShader(GL_VERTEX_SHADER,   vert);
-    GLuint fs = compileShader(GL_FRAGMENT_SHADER, frag);
+    GLuint vs = compileShader(GL_VERTEX_SHADER,   vertSrc.c_str());
+    GLuint fs = compileShader(GL_FRAGMENT_SHADER, fragSrc.c_str());
     m_prog = glCreateProgram();
     glAttachShader(m_prog, vs);
     glAttachShader(m_prog, fs);

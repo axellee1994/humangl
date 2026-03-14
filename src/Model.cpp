@@ -60,11 +60,9 @@ Model::Model()
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _ebo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(CUBE_IDX), CUBE_IDX, GL_STATIC_DRAW);
 
-    // aPos  — location 0
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), reinterpret_cast<void*>(0));
 
-    // aNormal — location 1
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), reinterpret_cast<void*>(3 * sizeof(float)));
 
@@ -76,8 +74,6 @@ Model::~Model() {
     glDeleteBuffers(1, &_vbo);
     glDeleteVertexArrays(1, &_vao);
 }
-
-// ── Matrix stack helpers ──────────────────────────────────────────────────────
 
 void Model::_push() {
     _stack.push_back(_current);
@@ -94,8 +90,6 @@ void Model::_apply(const mat4 &m) {
     _current = _current * m;
 }
 
-// ── Draw unit cube using the current accumulated matrix ───────────────────────
-
 void Model::_drawCube(Shader &shader) {
     shader.setMat4("model", _current);
     glBindVertexArray(_vao);
@@ -103,25 +97,20 @@ void Model::_drawCube(Shader &shader) {
     glBindVertexArray(0);
 }
 
-// ── Full body draw ────────────────────────────────────────────────────────────
-
 void Model::draw(Shader &shader, const Pose &pose) {
     _stack.clear();
     _current = identity();
 
-    // Root: body offset + torso rotation
     _apply(translate(0.f, pose.bodyY, 0.f));
     _apply(rotateY(pose.joints[TORSO_Y]));
     _apply(rotateX(pose.joints[TORSO_X]));
 
-    // ── Torso ────────────────────────────────────────────────────────────────
     _push();
         _apply(scale(torsoW, torsoH, torsoD));
         shader.setVec3("color", {0.2f, 0.4f, 0.8f});
         _drawCube(shader);
     _pop();
 
-    // ── Head ─────────────────────────────────────────────────────────────────
     _push();
         _apply(translate(0.f, torsoH * 0.5f + headS * 0.5f + 0.02f, 0.f));
         _apply(rotateY(pose.joints[HEAD_Y]));
@@ -130,14 +119,12 @@ void Model::draw(Shader &shader, const Pose &pose) {
         _drawCube(shader);
     _pop();
 
-    // ── Left arm ─────────────────────────────────────────────────────────────
     _push();
         _apply(translate(-(torsoW * 0.5f + uArmW * 0.5f + 0.01f),
                           torsoH * 0.5f - uArmH * 0.15f,
                           0.f));
         _apply(rotateX(pose.joints[L_SHOULDER]));
 
-        // upper arm
         _push();
             _apply(translate(0.f, -uArmH * 0.5f, 0.f));
             _apply(scale(uArmW, uArmH, uArmD));
@@ -145,7 +132,6 @@ void Model::draw(Shader &shader, const Pose &pose) {
             _drawCube(shader);
         _pop();
 
-        // elbow pivot + forearm
         _apply(translate(0.f, -uArmH, 0.f));
         _apply(rotateX(pose.joints[L_ELBOW]));
         _apply(translate(0.f, -fArmH * 0.5f, 0.f));
@@ -154,7 +140,6 @@ void Model::draw(Shader &shader, const Pose &pose) {
         _drawCube(shader);
     _pop();
 
-    // ── Right arm ────────────────────────────────────────────────────────────
     _push();
         _apply(translate( torsoW * 0.5f + uArmW * 0.5f + 0.01f,
                           torsoH * 0.5f - uArmH * 0.15f,
@@ -176,12 +161,10 @@ void Model::draw(Shader &shader, const Pose &pose) {
         _drawCube(shader);
     _pop();
 
-    // ── Left leg ─────────────────────────────────────────────────────────────
     _push();
         _apply(translate(-(thighW * 0.6f), -torsoH * 0.5f, 0.f));
         _apply(rotateX(pose.joints[L_HIP]));
 
-        // thigh
         _push();
             _apply(translate(0.f, -thighH * 0.5f, 0.f));
             _apply(scale(thighW, thighH, thighD));
@@ -189,7 +172,6 @@ void Model::draw(Shader &shader, const Pose &pose) {
             _drawCube(shader);
         _pop();
 
-        // knee pivot + lower leg
         _apply(translate(0.f, -thighH, 0.f));
         _apply(rotateX(pose.joints[L_KNEE]));
         _apply(translate(0.f, -lLegH * 0.5f, 0.f));
@@ -198,7 +180,6 @@ void Model::draw(Shader &shader, const Pose &pose) {
         _drawCube(shader);
     _pop();
 
-    // ── Right leg ────────────────────────────────────────────────────────────
     _push();
         _apply(translate( thighW * 0.6f, -torsoH * 0.5f, 0.f));
         _apply(rotateX(pose.joints[R_HIP]));
